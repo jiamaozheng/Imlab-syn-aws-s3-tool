@@ -154,21 +154,28 @@ class BackupS3(object):
         self.logger.info(msg)
         print(msg)
 
+        bucket_name = None
         for x in range (0, len(data["Buckets"])):
             if self.bucket_name.split('/')[0] == data["Buckets"][x]['Name']:
-                if self.output_path[-1] != '/':
-                    self.output_path = self.output_path + '/'
-                cmd = ''
-                if self.output_path != 'o':
-                    cmd = 'aws s3 sync s3://%s %s' %(self.bucket_name, self.output_path + self.bucket_name)
-                else:
-                    cmd = 'aws s3 sync s3://%s %s' %(self.bucket_name, currentPath + 'aws_s3_buckets/' + self.bucket_name)                   
-                msg = "Executing sync s3 command:  " +  cmd
-                self.logger.info(msg)
-                print(msg)
+                bucket_name = self.bucket_name 
 
-                os.system(cmd)
-                break
+        if bucket_name is None:
+            msg = "\nFAILED! Please check your bucket name - %s which matchs to that of the s3 bucket" % (self.bucket_name.split('/')[0])
+            self.logger.info(msg)
+            print(msg)  
+        else:          
+            if self.output_path[-1] != '/':
+                self.output_path = self.output_path + '/'
+            cmd = ''
+            if self.output_path != 'o':
+                cmd = 'aws s3 sync s3://%s %s' %(self.bucket_name, self.output_path + self.bucket_name)
+            else:
+                cmd = 'aws s3 sync s3://%s %s' %(self.bucket_name, currentPath + 'aws_s3_buckets/' + self.bucket_name)                   
+            msg = "Executing sync s3 command:  " +  cmd
+            self.logger.info(msg)
+            print(msg)
+
+            os.system(cmd)
 
     def synOneFile(self):
         # current path 
@@ -191,27 +198,30 @@ class BackupS3(object):
         self.logger.info(msg)
         print(msg)
 
+        file_name = None
         for x in range (0, len(data["Buckets"])):
             if self.file_name.split('/')[0] == data["Buckets"][x]['Name']:
-                # print(self.file_name.split('/')[0] == data["Buckets"][x]['Name'])
-                if self.output_path[-1] != '/':
-                    self.output_path = self.output_path + '/'
-                    # print(self.output_path)
-                cmd = ''
-                if self.output_path != 'o':
-                    cmd = 'aws s3 cp s3://%s %s' %(self.file_name, self.output_path + self.file_name)
-                else:
-                    cmd = 'aws s3 cp s3://%s %s' %(self.file_name, currentPath + 'aws_s3_buckets/' + self.file_name)                   
-                msg = "Executing cp s3 command:  " +  cmd
-                self.logger.info(msg)
-                print(msg)
+                file_name = self.file_name
 
-                os.system(cmd)
-                break
-            # else:
-            #     msg = "Please check your bucket name - %s is equal to s3 bucket - %s" % (self.file_name.split('/')[0], data["Buckets"][x]['Name'])
-            #     self.logger.info(msg)
-            #     print(msg)
+        if file_name is None:
+            msg = "\nFAILED! Please check your bucket name - %s which matchs to that of the s3 bucket" % (self.file_name.split('/')[0])
+            self.logger.info(msg)
+            print(msg)  
+        else:  
+            # print(self.file_name.split('/')[0] == data["Buckets"][x]['Name'])
+            if self.output_path[-1] != '/':
+                self.output_path = self.output_path + '/'
+                # print(self.output_path)
+            cmd = ''
+            if self.output_path != 'o':
+                cmd = 'aws s3 cp s3://%s %s' %(self.file_name, self.output_path + self.file_name)
+            else:
+                cmd = 'aws s3 cp s3://%s %s' %(self.file_name, currentPath + 'aws_s3_buckets/' + self.file_name)                   
+            msg = "Executing cp s3 command:  " +  cmd
+            self.logger.info(msg)
+            print(msg)
+
+            os.system(cmd)
 
 def main():
     # Instantial class
@@ -225,11 +235,21 @@ def main():
     print(msg) 
 
     # backup all buckets, one bucket or one file 
-    if backupS3.bucket_name != 'b' and backupS3.file_name == 'f':
-        backupS3.synOneBucket()
-    elif backupS3.bucket_name == 'b' and backupS3.file_name != 'f':
-        backupS3.synOneFile()
-    if backupS3.bucket_name == 'b' and backupS3.file_name == 'f': 
+    if backupS3.bucket_name != 'b' and backupS3.file_name == 'f': # one bucket 
+        if not os.path.isdir(backupS3.bucket_name) and not os.path.isdir(backupS3.file_name):
+            backupS3.synOneBucket()
+        else: 
+            msg = "\nYou are backuping a single file, not a bucket or bucket/subfolder. Please don't use usage -b instead use usage -f" # calculate how long the program is running
+            backupS3.logger.info(msg)
+            print(msg) 
+    elif backupS3.bucket_name == 'b' and backupS3.file_name != 'f':  # a single file 
+        if not os.path.isdir(backupS3.bucket_name) and not os.path.isdir(backupS3.file_name): 
+            backupS3.synOneFile()
+        else: 
+            msg = "\nYou are backuping a bucket or bucket/subfolder, not a single file. Please don't use usage -f instead use usage -b" # calculate how long the program is running
+            backupS3.logger.info(msg)
+            print(msg) 
+    elif backupS3.bucket_name == 'b' and backupS3.file_name == 'f':  # all buckets 
         backupS3.synAllBuckets()
 
     msg = "\nElapsed Time: " + backupS3.timeString(time.time() - start_time) # calculate how long the program is running
