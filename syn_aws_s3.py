@@ -1,7 +1,8 @@
-import sys, os, logging, argparse, json, time
+import sys, os, logging, argparse, json, time, boto3
 from pprint import pprint
 from datetime import datetime
 import uuid as myuuid
+from botocore.exceptions import ClientError
 
 __author__ = "Jiamao Zheng <jiamaoz@yahoo.com>"
 __version__ = "Revision: 0.0.1"
@@ -169,13 +170,29 @@ class BackupS3(object):
             cmd = ''
             if self.output_path != 'o':
                 cmd = 'aws s3 sync s3://%s %s' %(self.bucket_name, self.output_path + self.bucket_name)
+                os.system(cmd)
+                if int(os.path.getsize(self.output_path + self.bucket_name)) > 500:
+                    msg = "\nGreat, you have successfully downloaded %s" % (self.output_path + self.bucket_name)
+                    self.logger.info(msg)
+                    print(msg) 
+                else:
+                    # os.system('rm -rf %s' %(self.output_path + self.bucket_name))
+                    msg = '\nFAILED! Please use usage -f or check the existence of your bucket/subfolder name - %s!' %(self.bucket_name)
+                    self.logger.info(msg)
+                    print(msg) 
             else:
-                cmd = 'aws s3 sync s3://%s %s' %(self.bucket_name, currentPath + 'aws_s3_buckets/' + self.bucket_name)                   
-            msg = "Executing sync s3 command:  " +  cmd
-            self.logger.info(msg)
-            print(msg)
+                cmd = 'aws s3 sync s3://%s %s' %(self.bucket_name, currentPath + 'aws_s3_buckets/' + self.bucket_name)
+                os.system(cmd)
+                if int(os.path.getsize(currentPath + 'aws_s3_buckets/' + self.bucket_name)) > 500:
+                    msg = '\nGreat, you have successfully downloaded %s' % (self.output_path + self.bucket_name)
+                    self.logger.info(msg)
+                    print(msg)
+                else:
+                    # os.system('rm -rf %s'%(self.bucket_name, currentPath + 'aws_s3_buckets/' + self.bucket_name))
+                    msg = "\nFAILED! Please use usage -f or check the existence of your bucket/subfolder name - %s!" %(self.bucket_name)
+                    self.logger.info(msg)
+                    print(msg)                    
 
-            os.system(cmd)
 
     def synOneFile(self):
         # current path 
@@ -216,7 +233,8 @@ class BackupS3(object):
             if self.output_path != 'o':
                 cmd = 'aws s3 cp s3://%s %s' %(self.file_name, self.output_path + self.file_name)
             else:
-                cmd = 'aws s3 cp s3://%s %s' %(self.file_name, currentPath + 'aws_s3_buckets/' + self.file_name)                   
+                cmd = 'aws s3 cp s3://%s %s' %(self.file_name, currentPath + 'aws_s3_buckets/' + self.file_name)
+
             msg = "Executing cp s3 command:  " +  cmd
             self.logger.info(msg)
             print(msg)
@@ -235,22 +253,34 @@ def main():
     print(msg) 
 
     # backup all buckets, one bucket or one file 
-    if backupS3.bucket_name != 'b' and backupS3.file_name == 'f': # one bucket 
-        if not os.path.isdir(backupS3.bucket_name) and not os.path.isdir(backupS3.file_name):
+    if backupS3.bucket_name != 'b' and backupS3.file_name == 'f': # one bucket
+        # s3 = boto3.resource('s3')
+        # try:
+        #     s3.Object(backupS3.bucket_name).load()
+        #     print('success')
+        # except ClientError as e:
+        #     print(e) 
+        try: 
             backupS3.synOneBucket()
-        else: 
-            msg = "\nYou are backuping a single file, not a bucket or bucket/subfolder. Please don't use usage -b instead use usage -f" # calculate how long the program is running
+        except Exception, e: 
+            msg = e
             backupS3.logger.info(msg)
             print(msg) 
+
     elif backupS3.bucket_name == 'b' and backupS3.file_name != 'f':  # a single file 
-        if not os.path.isdir(backupS3.bucket_name) and not os.path.isdir(backupS3.file_name): 
+        try: 
             backupS3.synOneFile()
-        else: 
-            msg = "\nYou are backuping a bucket or bucket/subfolder, not a single file. Please don't use usage -f instead use usage -b" # calculate how long the program is running
+        except Exception, e: 
+            msg = e
             backupS3.logger.info(msg)
             print(msg) 
     elif backupS3.bucket_name == 'b' and backupS3.file_name == 'f':  # all buckets 
-        backupS3.synAllBuckets()
+        try:
+            backupS3.synAllBuckets()
+        except Exception, e: 
+            msg = e
+            backupS3.logger.info(msg)
+            print(msg) 
 
     msg = "\nElapsed Time: " + backupS3.timeString(time.time() - start_time) # calculate how long the program is running
     backupS3.logger.info(msg)
