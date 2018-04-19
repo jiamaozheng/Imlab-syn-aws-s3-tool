@@ -1,7 +1,7 @@
 # syn-aws-s3-tool
 
 ## Introduction 
-+ A tool used for synchronize/backup imlab aws s3 bucket files 
++ A tool used for synchronize/backup aws s3 bucket files 
 
 
 ## Prerequisites
